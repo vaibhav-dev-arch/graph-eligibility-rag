@@ -39,7 +39,10 @@
       try {
         const resp = await fetch("/demo", { method: "POST" });
         const data = await resp.json();
-        if (!resp.ok) throw new Error(JSON.stringify(data));
+        if (!resp.ok) {
+          const health = await fetch("/health").then(r => r.json());
+          throw new Error(data.detail || JSON.stringify(data) + "\n\nHealth: " + JSON.stringify(health, null, 2));
+        }
         output.textContent = JSON.stringify(data, null, 2);
         status.textContent = `Done in ${data.latency_ms}ms — ${data.results?.length || 0} results`;
       } catch (e) {
