@@ -39,13 +39,15 @@ def _require_services():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Non-fatal startup: app stays up so /health works before Neo4j is configured.
+    uri_set = bool(os.environ.get("NEO4J_URI", "").strip())
+    pwd_set = bool(os.environ.get("NEO4J_PASSWORD", "").strip())
+    print(f"[startup] NEO4J_URI set={uri_set} NEO4J_PASSWORD set={pwd_set}", flush=True)
     initialize_services()
     yield
     clear_services()
 
 
-app = FastAPI(title="Graph Eligibility RAG", lifespan=lifespan, version="0.1.0")
+app = FastAPI(title="Graph Eligibility RAG", lifespan=lifespan, version="0.1.1")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
