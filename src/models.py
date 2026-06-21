@@ -34,6 +34,17 @@ class Market(str, Enum):
     GLOBAL = "GLOBAL"
 
 
+class ProvenanceInfo(BaseModel):
+    """Simulated C2PA-style provenance (POC: metadata only)."""
+    model_config = {"protected_namespaces": ()}
+
+    creator: Optional[str] = None
+    tool: Optional[str] = None
+    model_version: Optional[str] = None
+    captured_at: Optional[datetime] = None
+    credentials_present: bool = False
+
+
 # --- Asset (canonical node in graph) ---
 class Asset(BaseModel):
     id: str
@@ -48,16 +59,7 @@ class Asset(BaseModel):
     rights_expiry: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    provenance: Optional["ProvenanceInfo"] = None
-
-
-class ProvenanceInfo(BaseModel):
-    """Simulated C2PA-style provenance (POC: metadata only)."""
-    creator: Optional[str] = None
-    tool: Optional[str] = None
-    model_version: Optional[str] = None
-    captured_at: Optional[datetime] = None
-    credentials_present: bool = False
+    provenance: Optional[ProvenanceInfo] = None
 
 
 # --- Relationship payloads (for graph edges) ---
