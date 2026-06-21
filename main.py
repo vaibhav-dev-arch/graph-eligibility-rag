@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI):
     clear_services()
 
 
-app = FastAPI(title="Graph Eligibility RAG", lifespan=lifespan, version="0.1.2")
+app = FastAPI(title="Graph Eligibility RAG", lifespan=lifespan, version="0.2.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
@@ -157,7 +157,7 @@ def health():
         "neo4j_configured": neo4j_configured,
         "neo4j": neo4j_ok,
         "chroma_assets": chroma_count,
-        "embedding_model": settings.embedding_model,
+        "embedding_backend": settings.embedding_backend,
         "error": err,
         "env_detected": {
             "NEO4J_URI": env_uri,

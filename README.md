@@ -93,6 +93,8 @@ If you already have Aura credentials, skip to Step 2.
 | `NEO4J_USER` | `neo4j` |
 | `NEO4J_PASSWORD` | your Aura password |
 | `AUTO_SEED_ON_STARTUP` | `true` |
+| `EMBEDDING_BACKEND` | `precomputed` |
+| `PYTHON_VERSION` | `3.11.9` |
 
 6. **Create Web Service** → wait 5–10 min for first build
 
@@ -127,10 +129,8 @@ In Render **Logs**, you should see:
 |---------|-----|
 | `env_detected` all `false` | Env vars missing on **Web Service** Environment tab → save → **Manual Deploy** |
 | `status: degraded`, Neo4j error | URI must start with `neo4j+s://`; check Aura password and instance is running |
-| Build timeout or OOM on deploy | **Clear build cache & redeploy** (uses CPU-only torch via `scripts/render_build.sh`). Set `PYTHON_VERSION=3.11.9`. |
-| `No open ports detected` then OOM | Redeploy latest `main` (v0.1.2+ binds port before loading PyTorch) |
-| OOM on first **Run demo query** | Free tier (512Mi) may be too small — upgrade to Render **Starter** ($7/mo) |
-| First demo slow (~60s) | Normal — embedding model loads on first `/demo` request |
+| Build timeout or OOM on deploy | Use **Clear build cache & redeploy**. Render uses `requirements-render.txt` (no PyTorch). Set `EMBEDDING_BACKEND=precomputed`. |
+| OOM on demo (legacy) | Should not happen on v0.2.0+ — precomputed mode uses ~50Mi, not PyTorch |
 
 **Notes:** Chroma data is ephemeral on Render; demo re-seeds on startup (`AUTO_SEED_ON_STARTUP=true`). First build takes 5–10 min. No LLM API key required.
 

@@ -12,6 +12,8 @@ services:
         value: "3.11"
       - key: AUTO_SEED_ON_STARTUP
         value: "true"
+      - key: EMBEDDING_BACKEND
+        value: precomputed
       - key: NEO4J_USER
         value: neo4j
       - key: NEO4J_URI

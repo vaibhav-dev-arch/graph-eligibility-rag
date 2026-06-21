@@ -1,7 +1,7 @@
 """Ingest pipeline: DAM/CMS → Enrich (optional LLM) → Graph + Embeddings."""
 from datetime import datetime, timedelta
+from typing import Optional
 
-from src.embeddings import EmbeddingService
 from src.graph import ContentGraph
 from src.integration import attach_provenance
 from src.models import Asset, ApprovalStatus, PerformedForProps
@@ -9,21 +9,20 @@ from src.models import Asset, ApprovalStatus, PerformedForProps
 
 def ingest_asset(
     graph: ContentGraph,
-    embedding_service: EmbeddingService,
+    embedding_service: Optional[object],
     asset: Asset,
     attach_prov: bool = True,
 ) -> None:
-    """Single asset: provenance → graph → embedding index."""
+    """Single asset: provenance → graph → optional embedding index."""
     if attach_prov:
         asset = attach_provenance(asset)
     graph.upsert_asset(asset)
-    embedding_service.index_asset(asset)
+    if embedding_service is not None:
+        embedding_service.index_asset(asset)
 
 
-def seed_demo_data(graph: ContentGraph, embedding_service: EmbeddingService) -> None:
-    """Seed minimal graph + embeddings for thin-slice demo."""
-    now = datetime.utcnow()
-    assets = [
+def _demo_assets(now: datetime) -> list[Asset]:
+    return [
         Asset(
             id="asset-001",
             name="Summer Campaign Hero",
@@ -80,10 +79,18 @@ def seed_demo_data(graph: ContentGraph, embedding_service: EmbeddingService) -> 
             updated_at=now,
         ),
     ]
-    for a in assets:
-        ingest_asset(graph, embedding_service, a)
 
-    # Relationships
+
+def seed_demo_graph(graph: ContentGraph) -> None:
+    """Seed Neo4j graph only (Render precomputed mode)."""
+    now = datetime.utcnow()
+    assets = _demo_assets(now)
+    for a in assets:
+        ingest_asset(graph, None, a)
+    _seed_demo_relationships(graph, now)
+
+
+def _seed_demo_relationships(graph: ContentGraph, now: datetime) -> None:
     graph.add_derived_from("asset-002", "asset-001", None)
     graph.add_about_topic("asset-001", "topic-summer", "Summer Sale", 0.9)
     graph.add_about_topic("asset-002", "topic-sustainability", "Sustainability", 0.95)
@@ -98,3 +105,11 @@ def seed_demo_data(graph: ContentGraph, embedding_service: EmbeddingService) -> 
     graph.add_performed_for("asset-001", "web", PerformedForProps(impressions=1000, clicks=50, conversions=5, last_delivered_at=now))
     graph.add_performed_for("asset-002", "email", PerformedForProps(impressions=500, clicks=80, conversions=10, last_delivered_at=now - timedelta(days=2)))
     graph.add_performed_for("asset-003", "video", PerformedForProps(impressions=2000, clicks=120, conversions=15, last_delivered_at=now - timedelta(days=1)))
+
+
+def seed_demo_data(graph: ContentGraph, embedding_service: object) -> None:
+    """Seed graph + Chroma embeddings (local dev)."""
+    now = datetime.utcnow()
+    for a in _demo_assets(now):
+        ingest_asset(graph, embedding_service, a)
+    _seed_demo_relationships(graph, now)

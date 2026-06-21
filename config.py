@@ -31,6 +31,9 @@ class Settings(BaseSettings):
 
     auto_seed_on_startup: bool = True
 
+    # "chroma" = SentenceTransformer + Chroma (local). "precomputed" = JSON vectors (Render 512Mi).
+    embedding_backend: str = "chroma"
+
 
 def get_settings() -> Settings:
     return Settings()

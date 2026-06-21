@@ -38,8 +38,14 @@ def _neo4j_env_ok() -> bool:
     )
 
 
+def _graph_is_empty(graph: ContentGraph) -> bool:
+    with graph._driver.session() as session:
+        record = session.run("MATCH (a:Asset) RETURN count(a) AS c").single()
+        return bool(record and record["c"] == 0)
+
+
 def initialize_graph() -> None:
-    """Connect Neo4j and init schema only (no torch — keeps free-tier startup under 512Mi)."""
+    """Connect Neo4j and init schema only."""
     global _graph, _startup_error
     if _graph is not None:
         return
@@ -63,14 +69,14 @@ def initialize_graph() -> None:
 
 
 def ensure_embeddings(*, seed_if_empty: bool = True) -> None:
-    """Load embedding model on first use (deferred from app startup for Render free tier)."""
+    """Load embedding backend on first use."""
     global _embeddings
     if _embeddings is not None:
         return
 
     from config import get_settings
-    from src.embeddings import EmbeddingService
-    from src.ingest import seed_demo_data
+    from src.embedding_factory import create_embedding_service
+    from src.ingest import seed_demo_data, seed_demo_graph
 
     if _graph is None:
         initialize_graph()
@@ -79,22 +85,25 @@ def ensure_embeddings(*, seed_if_empty: bool = True) -> None:
 
     settings = get_settings()
     try:
-        embeddings = EmbeddingService()
+        embeddings = create_embedding_service()
         if seed_if_empty and settings.auto_seed_on_startup:
-            try:
-                count = embeddings._collection.count()
-            except Exception:
-                count = 0
-            if count == 0:
-                seed_demo_data(_graph, embeddings)
+            if settings.embedding_backend.lower() == "precomputed":
+                if _graph_is_empty(_graph):
+                    seed_demo_graph(_graph)
+            else:
+                try:
+                    count = embeddings._collection.count()
+                except Exception:
+                    count = 0
+                if count == 0:
+                    seed_demo_data(_graph, embeddings)
         _embeddings = embeddings
     except Exception as exc:
         _embeddings = None
-        _set_startup_error(f"Embedding model load failed: {exc}")
+        _set_startup_error(f"Embedding load failed: {exc}")
 
 
 def initialize_services(*, seed_if_empty: bool = True) -> None:
-    """Full init: Neo4j + embeddings (used by API handlers, not app lifespan)."""
     initialize_graph()
     ensure_embeddings(seed_if_empty=seed_if_empty)
 
