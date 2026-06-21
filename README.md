@@ -2,134 +2,122 @@
 
 **What this is:** A reference implementation of **hybrid GraphRAG** — vector similarity (Chroma) plus Neo4j graph **eligibility** constraints (rights, market, channel, approval) — with C2PA-style provenance metadata and explainable ranking. The demo domain is **creative content recommendation** (retail/marketing); the pattern generalizes to other eligibility-gated knowledge retrieval (e.g. clinical trial matching).
 
-## Features
+## Live demo
 
-- **Content graph (Neo4j)**  
-  System of record with 5 relationship types: `DERIVED_FROM`, `ABOUT_TOPIC`, `TARGET_AUDIENCE`, `DELIVERED_IN` / `PERFORMED_FOR`, `SIMILAR_TO`.
+**Live URL:** _Deploy pending — see [Deploy on Render (free)](#deploy-on-render-free) below._
 
-- **Embedding layer**  
-  Asset-level semantic embeddings (Sentence Transformers) stored in **Chroma**; single model, text-first for POC.
-
-- **Integration layer**  
-  Stubbed DAM/CMS, provenance metadata (C2PA-style), and event-bus telemetry (in-memory).
-
-- **Hybrid retrieval**  
-  Top-K vector search + graph eligibility (rights, market, channel, approval). Latency target &lt;500ms.
-
-- **Ranking**  
-  Weighted score: `similarity × 0.6 + trust × 0.2 + recency × 0.2` with explainable reasons.
-
-- **Optional LLM**  
-  Metadata enrichment and natural-language “why recommended” (OpenAI-compatible / Ollama).
+Open the link → click **Run demo query**, or use [/docs](https://graph-eligibility-rag.onrender.com/docs) once deployed.
 
 ## Quick start
 
-### 1. Python environment
+### Try it live (recommended)
+
+Visit the live URL once deployed.
+
+- **Landing page:** `/` — one-click demo query
+- **API docs:** `/docs`
+- **Health:** `/health` — confirms Neo4j + Chroma seeded
+- **Demo:** `POST /demo`
+
+_Free tier: may sleep after ~15 min idle; first load after idle can take 60–90s (embedding model load)._
+
+### Run locally
 
 ```bash
 git clone https://github.com/vaibhav-dev-arch/graph-eligibility-rag.git
 cd graph-eligibility-rag
-python -m venv .venv
-source .venv/bin/activate   # or .venv\Scripts\activate on Windows
-pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
+
+# Start Neo4j (Docker)
+docker compose up -d
+
+cp .env.example .env   # set NEO4J_PASSWORD=pocpassword to match docker-compose
+python3 app.py
 ```
 
-### 2. Neo4j
-
-Run Neo4j 5.x (Docker example):
+Server: **http://127.0.0.1:8000** · Landing: **/** · API docs: **/docs**
 
 ```bash
-docker run -d --name neo4j -p 7474:7474 -p 7687:7687 \
-  -e NEO4J_AUTH=neo4j/your_password neo4j:5
+# Another terminal
+python3 scripts/run_demo.py
+# Or: bash scripts/run_demo.sh
 ```
 
-Set `.env` (copy from `.env.example`):
+## Deploy on Render (free)
 
-- `NEO4J_URI=bolt://localhost:7687`
-- `NEO4J_USER=neo4j`
-- `NEO4J_PASSWORD=your_password`
+This app needs **Neo4j in the cloud** (Render cannot run Neo4j on the free web service). Use **Neo4j Aura Free**:
 
-### 3. Optional: LLM (Ollama)
+### Step 1 — Neo4j Aura (free, ~5 min)
 
-For enrichment and explanation generation:
+1. Go to [Neo4j Aura](https://neo4j.com/cloud/aura-free/) → create free instance
+2. Save connection details:
+   - `NEO4J_URI` — e.g. `neo4j+s://xxxx.databases.neo4j.io`
+   - `NEO4J_USER` — usually `neo4j`
+   - `NEO4J_PASSWORD` — generated password
+
+### Step 2 — Render
+
+1. [Render Dashboard](https://dashboard.render.com/) → **New** → **Blueprint**
+2. Connect GitHub → select `vaibhav-dev-arch/graph-eligibility-rag`
+3. When prompted, set environment variables:
+   - `NEO4J_URI`
+   - `NEO4J_USER`
+   - `NEO4J_PASSWORD`
+4. Deploy → copy your `*.onrender.com` URL
+
+Or **Web Service** manually: Python 3, build `pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && pip install -r requirements.txt`, start `python app.py`, health `/health`.
+
+### Deployment notes
+
+- **Chroma embeddings are ephemeral** on Render — demo data re-seeds automatically on startup (`AUTO_SEED_ON_STARTUP=true`).
+- **First deploy build** takes 5–10 min (PyTorch + sentence-transformers). First request after idle loads the embedding model (~30–60s).
+- If the service crashes on free tier (memory), upgrade to Render **Starter** ($7/mo) for more headroom.
+- No LLM API key required — `LLM_ENABLED=false` by default.
+
+## Features
+
+- **Content graph (Neo4j)** — 5 relationship types: `DERIVED_FROM`, `ABOUT_TOPIC`, `TARGET_AUDIENCE`, `DELIVERED_IN` / `PERFORMED_FOR`, `SIMILAR_TO`
+- **Embedding layer** — Sentence Transformers + Chroma
+- **Hybrid retrieval** — vector search + graph eligibility filters
+- **Ranking** — `similarity × 0.6 + trust × 0.2 + recency × 0.2` with explainable reasons
+- **Provenance** — C2PA-style metadata on assets
+
+## Example
 
 ```bash
-ollama pull llama3.2
+# Demo query (no body)
+curl -s -X POST https://YOUR-URL.onrender.com/demo | jq
+
+# Custom query with eligibility
+curl -s -X POST https://YOUR-URL.onrender.com/next-best-content \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"summer sale discount","top_k":5,"explain":true}' | jq
 ```
 
-In `.env`: `LLM_ENABLED=true`, `LLM_BASE_URL=http://localhost:11434/v1`, `LLM_MODEL=llama3.2`.
+## Related portfolio demos
 
-## Run
-
-1. **Seed demo data** (creates schema, assets, relationships, embeddings):
-
-```bash
-curl -X POST http://localhost:8000/seed
-```
-
-2. **Start API** (from project root):
-
-```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
-3. **Next best content**
-
-- By **query**:
-
-```bash
-curl -X POST http://localhost:8000/next-best-content \
-  -H "Content-Type: application/json" \
-  -d '{"query": "summer sale discount", "top_k": 5, "explain": true}'
-```
-
-- By **reference asset** (“content like this”):
-
-```bash
-curl -X POST http://localhost:8000/next-best-content \
-  -H "Content-Type: application/json" \
-  -d '{"reference_asset_id": "asset-001", "top_k": 5, "explain": true}'
-```
-
-- With **eligibility**:
-
-```bash
-curl -X POST http://localhost:8000/next-best-content \
-  -H "Content-Type: application/json" \
-  -d '{"query": "sustainability", "eligibility": {"markets": ["US","EU"], "channels": ["web","email"], "approval_statuses": ["approved"]}, "top_k": 5}'
-```
-
-Response includes `results` (ranked list with `score`, `similarity_score`, `trust_score`, `recency_score`, `explanation`), `retrieval_explanation`, and `latency_ms`.
+- [agent-observability-demo](https://agent-observability-demo.onrender.com) — traces + eval gates (Pillar 2)
+- [ai-bcdr-governance](https://ai-bcdr-governance.onrender.com) — calibrated autonomy + evidence trail (Pillar 3)
 
 ## Project layout
 
 ```
 graph-eligibility-rag/
-├── config.py              # Settings (env)
+├── app.py                 # Render entry (reads PORT)
 ├── main.py                # FastAPI app
-├── requirements.txt
-├── .env.example
+├── config.py
+├── render.yaml
+├── docker-compose.yml     # Local Neo4j only
+├── static/index.html      # Landing + demo button
 ├── src/
-│   ├── models.py          # Asset, relationships, eligibility, request/result
-│   ├── graph.py           # Neo4j schema + CRUD + eligibility query
-│   ├── embeddings.py      # SentenceTransformer + Chroma
-│   ├── integration.py     # DAM/provenance/telemetry stubs
+│   ├── graph.py           # Neo4j
+│   ├── embeddings.py      # Chroma + SentenceTransformers
 │   ├── retrieval.py       # Hybrid retriever
-│   ├── ranking.py         # Heuristic ranking + explain
-│   ├── llm_enrichment.py  # Optional LLM metadata + explanation
-│   ├── ingest.py          # Ingest + seed
-│   └── next_best.py       # Next-best-content orchestration
-└── data/
-    └── chroma/            # Chroma persistence (created at runtime)
+│   ├── ranking.py
+│   └── next_best.py
+└── scripts/run_demo.py
 ```
-
-## Design notes
-
-- **Eligibility** is enforced at read time: only assets passing rights, market, channel, and approval filters are returned.
-- **Provenance** is simulated with metadata; C2PA can be wired in later via open-source C2PA libraries.
-- **Telemetry** is stubbed; replace with Kafka/CDC for production.
-- **Multimodal**: POC uses text-only embeddings; OpenCLIP/BLIP can be added for image/video keyframes with the same pipeline pattern.
 
 ## Former name
 
-Previously `ai-marketing-poc`. Renamed to reflect the reusable **graph + eligibility + RAG** pattern rather than a single marketing POC label.
+Previously `ai-marketing-poc`. Renamed to reflect the reusable **graph + eligibility + RAG** pattern.

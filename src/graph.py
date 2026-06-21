@@ -44,13 +44,13 @@ class ContentGraph:
                 "CREATE INDEX asset_updated IF NOT EXISTS FOR (a:Asset) ON (a.updated_at)"
             )
             session.run(
-                "CREATE INDEX topic_id IF NOT EXISTS FOR (t:Topic) REQUIRE t.id IS UNIQUE"
+                "CREATE CONSTRAINT topic_id IF NOT EXISTS FOR (t:Topic) REQUIRE t.id IS UNIQUE"
             )
             session.run(
-                "CREATE INDEX audience_id IF NOT EXISTS FOR (aud:Audience) REQUIRE aud.id IS UNIQUE"
+                "CREATE CONSTRAINT audience_id IF NOT EXISTS FOR (aud:Audience) REQUIRE aud.id IS UNIQUE"
             )
             session.run(
-                "CREATE INDEX channel_name IF NOT EXISTS FOR (c:Channel) REQUIRE c.name IS UNIQUE"
+                "CREATE CONSTRAINT channel_name IF NOT EXISTS FOR (c:Channel) REQUIRE c.name IS UNIQUE"
             )
 
     def upsert_asset(self, asset: Asset) -> None:

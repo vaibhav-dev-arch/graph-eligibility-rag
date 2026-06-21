@@ -1,0 +1,15 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# After deploy: set NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD in Render dashboard (Neo4j Aura free tier).
+services:
+  - type: web
+    name: graph-eligibility-rag
+    runtime: python
+    plan: free
+    buildCommand: pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && pip install -r requirements.txt
+    startCommand: python app.py
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: AUTO_SEED_ON_STARTUP
+        value: "true"

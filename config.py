@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     ranking_trust_weight: float = 0.2
     ranking_recency_weight: float = 0.2
 
+    auto_seed_on_startup: bool = True
+
     class Config:
         env_file = ".env"
         extra = "ignore"
