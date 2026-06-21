@@ -108,10 +108,15 @@ def api_telemetry():
 def health():
     """Always returns 200 so Render health checks pass during Neo4j setup."""
     settings = get_settings()
-    neo4j_configured = bool(settings.neo4j_uri and settings.neo4j_password)
+    env_uri = bool(os.environ.get("NEO4J_URI", "").strip())
+    env_password = bool(os.environ.get("NEO4J_PASSWORD", "").strip())
+    neo4j_configured = env_uri and env_password
     neo4j_ok = False
     chroma_count = 0
     err = startup_error()
+
+    if neo4j_configured and not services_ready():
+        initialize_services()
 
     if services_ready():
         try:
@@ -136,10 +141,15 @@ def health():
         "chroma_assets": chroma_count,
         "embedding_model": settings.embedding_model,
         "error": err,
+        "env_detected": {
+            "NEO4J_URI": env_uri,
+            "NEO4J_USER": bool(os.environ.get("NEO4J_USER", "").strip()),
+            "NEO4J_PASSWORD": env_password,
+        },
         "setup_hint": (
             None
             if neo4j_configured
-            else "Set NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD from Neo4j Aura, then Manual Deploy."
+            else "Set NEO4J_URI and NEO4J_PASSWORD on the web service Environment tab, then Manual Deploy."
         ),
     }
 

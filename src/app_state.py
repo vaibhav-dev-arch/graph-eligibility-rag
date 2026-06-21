@@ -29,16 +29,21 @@ def _set_startup_error(message: str) -> None:
 def initialize_services(*, seed_if_empty: bool = True) -> None:
     """Connect Neo4j, load embedding model, optionally seed demo data."""
     global _graph, _embeddings, _startup_error
+    import os
+
     from config import get_settings
     from src.embeddings import EmbeddingService
     from src.graph import ContentGraph
     from src.ingest import seed_demo_data
 
     settings = get_settings()
-    if not settings.neo4j_password:
+    if not os.environ.get("NEO4J_PASSWORD", "").strip():
         _set_startup_error(
             "Neo4j not configured. Set NEO4J_URI, NEO4J_USER, and NEO4J_PASSWORD in Render env."
         )
+        return
+    if not os.environ.get("NEO4J_URI", "").strip():
+        _set_startup_error("NEO4J_URI is missing from environment.")
         return
 
     graph: ContentGraph | None = None
