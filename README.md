@@ -1,6 +1,6 @@
-# AI Marketing POC
+# Graph Eligibility RAG
 
-Proof-of-concept for an AI-based marketing system that connects **creative assets**, **cultural signals**, **provenance credentials**, and **performance data** to enable **intelligent content recommendation** via hybrid retrieval (embedding similarity + graph-based eligibility).
+**What this is:** A reference implementation of **hybrid GraphRAG** — vector similarity (Chroma) plus Neo4j graph **eligibility** constraints (rights, market, channel, approval) — with C2PA-style provenance metadata and explainable ranking. The demo domain is **creative content recommendation** (retail/marketing); the pattern generalizes to other eligibility-gated knowledge retrieval (e.g. clinical trial matching).
 
 ## Features
 
@@ -22,12 +22,13 @@ Proof-of-concept for an AI-based marketing system that connects **creative asset
 - **Optional LLM**  
   Metadata enrichment and natural-language “why recommended” (OpenAI-compatible / Ollama).
 
-## Setup
+## Quick start
 
 ### 1. Python environment
 
 ```bash
-cd ai-marketing-poc
+git clone https://github.com/vaibhav-dev-arch/graph-eligibility-rag.git
+cd graph-eligibility-rag
 python -m venv .venv
 source .venv/bin/activate   # or .venv\Scripts\activate on Windows
 pip install -r requirements.txt
@@ -103,7 +104,7 @@ Response includes `results` (ranked list with `score`, `similarity_score`, `trus
 ## Project layout
 
 ```
-ai-marketing-poc/
+graph-eligibility-rag/
 ├── config.py              # Settings (env)
 ├── main.py                # FastAPI app
 ├── requirements.txt
@@ -128,3 +129,7 @@ ai-marketing-poc/
 - **Provenance** is simulated with metadata; C2PA can be wired in later via open-source C2PA libraries.
 - **Telemetry** is stubbed; replace with Kafka/CDC for production.
 - **Multimodal**: POC uses text-only embeddings; OpenCLIP/BLIP can be added for image/video keyframes with the same pipeline pattern.
+
+## Former name
+
+Previously `ai-marketing-poc`. Renamed to reflect the reusable **graph + eligibility + RAG** pattern rather than a single marketing POC label.

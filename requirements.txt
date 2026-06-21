@@ -1,4 +1,4 @@
-# AI Marketing POC - Dependencies
+# Graph Eligibility RAG - Dependencies
 # Graph
 neo4j>=5.14.0
 

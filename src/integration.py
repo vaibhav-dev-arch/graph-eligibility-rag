@@ -33,7 +33,7 @@ def attach_provenance(asset: Asset, creator: str = "", tool: str = "", model_ver
     """Attach provenance metadata to asset (simulated C2PA)."""
     asset.provenance = ProvenanceInfo(
         creator=creator or "poc_ingest",
-        tool=tool or "ai-marketing-poc",
+        tool=tool or "graph-eligibility-rag",
         model_version=model_version,
         captured_at=datetime.utcnow(),
         credentials_present=bool(creator or tool),

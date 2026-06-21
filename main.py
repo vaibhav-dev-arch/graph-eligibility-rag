@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI):
     pass
 
 
-app = FastAPI(title="AI Marketing POC", lifespan=lifespan)
+app = FastAPI(title="Graph Eligibility RAG", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 

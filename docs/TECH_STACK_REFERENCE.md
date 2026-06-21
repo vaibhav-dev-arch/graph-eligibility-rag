@@ -1,4 +1,4 @@
-# AI Marketing POC — Tech Stack & Tools Reference
+# Graph Eligibility RAG — Tech Stack & Tools Reference
 
 Comprehensive table of tools and technologies: **used in POC**, **alternatives**, **purpose**, **license**, and **cost**.
 

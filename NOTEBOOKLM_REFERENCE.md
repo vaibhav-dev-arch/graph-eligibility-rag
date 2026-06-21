@@ -1,4 +1,4 @@
-# AI Marketing POC — NotebookLM Reference
+# Graph Eligibility RAG — NotebookLM Reference
 
 This document is the single source for architecture, design, and full code-level (module, class, and method) detail for the AI-based marketing system POC.
 
