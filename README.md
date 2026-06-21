@@ -125,18 +125,14 @@ In Render **Logs**, you should see:
 
 | Symptom | Fix |
 |---------|-----|
-| `env_detected` all `false` | Env vars missing on **Web Service** Environment tab → save → Manual Deploy |
-| `status: degraded`, Neo4j error | Check URI starts with `neo4j+s://`, password correct, Aura instance running |
-| Build timeout / OOM on deploy | **Clear build cache & redeploy** — build must use CPU-only torch (see `scripts/render_build.sh`). If still OOM on first `/demo`, upgrade to **Starter** ($7/mo). |
-| `No open ports detected` then OOM | Fixed in v0.1.2 — app binds port before loading PyTorch. Redeploy latest `main`. |
-| First demo slow (~60s) | Normal — embedding model loads on first `/demo` request (deferred for free tier). |
+| `env_detected` all `false` | Env vars missing on **Web Service** Environment tab → save → **Manual Deploy** |
+| `status: degraded`, Neo4j error | URI must start with `neo4j+s://`; check Aura password and instance is running |
+| Build timeout or OOM on deploy | **Clear build cache & redeploy** (uses CPU-only torch via `scripts/render_build.sh`). Set `PYTHON_VERSION=3.11.9`. |
+| `No open ports detected` then OOM | Redeploy latest `main` (v0.1.2+ binds port before loading PyTorch) |
+| OOM on first **Run demo query** | Free tier (512Mi) may be too small — upgrade to Render **Starter** ($7/mo) |
+| First demo slow (~60s) | Normal — embedding model loads on first `/demo` request |
 
-### Deployment notes
-
-- **Chroma embeddings are ephemeral** on Render — demo data re-seeds automatically on startup (`AUTO_SEED_ON_STARTUP=true`).
-- **First deploy build** takes 5–10 min (PyTorch + sentence-transformers). First request after idle loads the embedding model (~30–60s).
-- If the service crashes on free tier (memory), upgrade to Render **Starter** ($7/mo) for more headroom.
-- No LLM API key required — `LLM_ENABLED=false` by default.
+**Notes:** Chroma data is ephemeral on Render; demo re-seeds on startup (`AUTO_SEED_ON_STARTUP=true`). First build takes 5–10 min. No LLM API key required.
 
 ## Features
 
