@@ -9,9 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from config import get_settings
-from src.app_state import clear_services, get_embeddings, get_graph, set_services
-from src.embeddings import EmbeddingService
-from src.graph import ContentGraph
+from src.app_state import clear_services, initialize_services, services_ready, startup_error
+from src.app_state import get_embeddings, get_graph
 from src.ingest import ingest_asset, seed_demo_data
 from src.integration import get_telemetry_events
 from src.models import Asset, NextBestContentRequest
@@ -20,14 +19,7 @@ from src.next_best import get_next_best_content
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 
-def _needs_seed(embeddings: EmbeddingService) -> bool:
-    try:
-        return embeddings._collection.count() == 0
-    except Exception:
-        return True
-
-
-def _verify_neo4j(graph: ContentGraph) -> bool:
+def _verify_neo4j(graph) -> bool:
     try:
         with graph._driver.session() as session:
             session.run("RETURN 1")
@@ -36,19 +28,19 @@ def _verify_neo4j(graph: ContentGraph) -> bool:
         return False
 
 
+def _require_services():
+    if not services_ready():
+        detail = startup_error() or "Services not initialized"
+        raise HTTPException(
+            status_code=503,
+            detail=f"{detail} — add NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD in Render Environment, then redeploy.",
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    settings = get_settings()
-    graph = ContentGraph()
-    embeddings = EmbeddingService()
-    try:
-        graph.init_schema()
-        if settings.auto_seed_on_startup and _needs_seed(embeddings):
-            seed_demo_data(graph, embeddings)
-        set_services(graph, embeddings)
-    except Exception as exc:
-        graph.close()
-        raise RuntimeError(f"Startup failed (check Neo4j env vars): {exc}") from exc
+    # Non-fatal startup: app stays up so /health works before Neo4j is configured.
+    initialize_services()
     yield
     clear_services()
 
@@ -59,7 +51,6 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 @app.get("/")
 def index():
-    """Landing page with demo links."""
     html_path = STATIC_DIR / "index.html"
     if html_path.exists():
         return FileResponse(html_path)
@@ -68,7 +59,7 @@ def index():
 
 @app.post("/ingest")
 def api_ingest(asset: Asset):
-    """Ingest one asset into graph + embeddings."""
+    _require_services()
     graph = get_graph()
     emb = get_embeddings()
     ingest_asset(graph, emb, asset)
@@ -77,7 +68,7 @@ def api_ingest(asset: Asset):
 
 @app.post("/seed")
 def api_seed():
-    """Seed demo data (minimal graph + embeddings)."""
+    _require_services()
     graph = get_graph()
     emb = get_embeddings()
     graph.init_schema()
@@ -87,7 +78,7 @@ def api_seed():
 
 @app.post("/next-best-content")
 def api_next_best_content(request: NextBestContentRequest):
-    """Next best content: semantic + eligibility + ranking + explain."""
+    _require_services()
     out = get_next_best_content(request)
     if out.get("latency_ms", 0) > get_settings().retrieval_latency_target_ms:
         out["latency_warning"] = (
@@ -99,7 +90,7 @@ def api_next_best_content(request: NextBestContentRequest):
 
 @app.post("/demo")
 def api_demo():
-    """Run a sample next-best-content query (no body required)."""
+    _require_services()
     request = NextBestContentRequest(
         query="summer sale discount",
         top_k=5,
@@ -110,30 +101,46 @@ def api_demo():
 
 @app.get("/telemetry")
 def api_telemetry():
-    """Return buffered telemetry events (stub)."""
     return {"events": get_telemetry_events()}
 
 
 @app.get("/health")
 def health():
+    """Always returns 200 so Render health checks pass during Neo4j setup."""
     settings = get_settings()
+    neo4j_configured = bool(settings.neo4j_uri and settings.neo4j_password)
     neo4j_ok = False
     chroma_count = 0
-    error = None
-    try:
-        graph = get_graph()
-        emb = get_embeddings()
-        neo4j_ok = _verify_neo4j(graph)
-        chroma_count = emb._collection.count()
-    except Exception as exc:
-        error = str(exc)
-    status = "ok" if neo4j_ok and chroma_count > 0 else "degraded"
+    err = startup_error()
+
+    if services_ready():
+        try:
+            graph = get_graph()
+            emb = get_embeddings()
+            neo4j_ok = _verify_neo4j(graph)
+            chroma_count = emb._collection.count()
+        except Exception as exc:
+            err = str(exc)
+
+    if neo4j_ok and chroma_count > 0:
+        status = "ok"
+    elif not neo4j_configured:
+        status = "setup_required"
+    else:
+        status = "degraded"
+
     return {
         "status": status,
+        "neo4j_configured": neo4j_configured,
         "neo4j": neo4j_ok,
         "chroma_assets": chroma_count,
         "embedding_model": settings.embedding_model,
-        "error": error,
+        "error": err,
+        "setup_hint": (
+            None
+            if neo4j_configured
+            else "Set NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD from Neo4j Aura, then Manual Deploy."
+        ),
     }
 
 
