@@ -4,17 +4,7 @@
 
 ## Live demo
 
-**Live URL:** https://graph-eligibility-marketingtech.onrender.com _(after deploy succeeds)_
-
-Open the link → click **Run demo query**, or use `/docs`.
-
-_Neo4j Aura env vars must be set in Render for `/demo` to work — see [Deploy on Render](#deploy-on-render-free)._
-
-## Quick start
-
-### Try it live (recommended)
-
-Visit the live URL once deployed.
+**Live URL:** _Deploy using steps below — target `https://graph-eligibility-rag.onrender.com`_
 
 - **Landing page:** `/` — one-click demo query
 - **API docs:** `/docs`
@@ -22,6 +12,12 @@ Visit the live URL once deployed.
 - **Demo:** `POST /demo`
 
 _Free tier: may sleep after ~15 min idle; first load after idle can take 60–90s (embedding model load)._
+
+## Quick start
+
+### Try it live (recommended)
+
+Visit your Render URL once deployed (see [Fresh deploy on Render](#fresh-deploy-on-render-from-scratch) below).
 
 ### Run locally
 
@@ -45,29 +41,94 @@ python3 scripts/run_demo.py
 # Or: bash scripts/run_demo.sh
 ```
 
-## Deploy on Render (free)
+## Fresh deploy on Render (from scratch)
 
-This app needs **Neo4j in the cloud** (Render cannot run Neo4j on the free web service). Use **Neo4j Aura Free**:
+This app needs **Neo4j Aura** (Render cannot run Neo4j on the web service). Use a **manual Web Service** — it avoids Blueprint sync issues.
 
-### Step 1 — Neo4j Aura (free, ~5 min)
+### Step 0 — Clean up old Render services
 
-1. Go to [Neo4j Aura](https://neo4j.com/cloud/aura-free/) → create free instance
-2. Save connection details:
-   - `NEO4J_URI` — e.g. `neo4j+s://xxxx.databases.neo4j.io`
-   - `NEO4J_USER` — usually `neo4j`
-   - `NEO4J_PASSWORD` — generated password
+In [Render Dashboard](https://dashboard.render.com/):
 
-### Step 2 — Render
+1. Delete **graph-eligibility-marketingtech** (and its Blueprint if shown)
+2. Delete any other failed `graph-eligibility-*` services
 
-1. [Render Dashboard](https://dashboard.render.com/) → **New** → **Blueprint**
-2. Connect GitHub → select `vaibhav-dev-arch/graph-eligibility-rag`
-3. When prompted, set environment variables:
-   - `NEO4J_URI`
-   - `NEO4J_USER`
-   - `NEO4J_PASSWORD`
-4. Deploy → copy your `*.onrender.com` URL
+Start with a clean slate.
 
-Or **Web Service** manually: Python 3, build `pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && pip install -r requirements.txt`, start `python app.py`, health `/health`.
+### Step 1 — Neo4j Aura credentials (~5 min)
+
+If you already have Aura credentials, skip to Step 2.
+
+1. [Neo4j Aura Free](https://neo4j.com/cloud/aura-free/) → create instance
+2. Save these three values:
+
+| Variable | Example |
+|----------|---------|
+| `NEO4J_URI` | `neo4j+s://xxxx.databases.neo4j.io` |
+| `NEO4J_USER` | `neo4j` |
+| `NEO4J_PASSWORD` | (generated password) |
+
+### Step 2 — Create Web Service on Render
+
+1. **New** → **Web Service** (not Blueprint)
+2. Connect GitHub → repo **`vaibhav-dev-arch/graph-eligibility-rag`**
+3. Settings:
+
+| Setting | Value |
+|---------|-------|
+| Name | `graph-eligibility-rag` |
+| Region | closest to you |
+| Branch | `main` |
+| Runtime | Python 3 |
+| Build Command | `bash scripts/render_build.sh` |
+| Start Command | `python app.py` |
+| Plan | Free |
+
+4. **Advanced** → Health Check Path: `/health`
+
+5. **Environment** → add **before** clicking Create:
+
+| Key | Value |
+|-----|-------|
+| `NEO4J_URI` | your Aura URI (`neo4j+s://...`) |
+| `NEO4J_USER` | `neo4j` |
+| `NEO4J_PASSWORD` | your Aura password |
+| `AUTO_SEED_ON_STARTUP` | `true` |
+
+6. **Create Web Service** → wait 5–10 min for first build
+
+### Step 3 — Verify
+
+```bash
+curl https://graph-eligibility-rag.onrender.com/health
+```
+
+Success:
+
+```json
+{
+  "status": "ok",
+  "env_detected": { "NEO4J_URI": true, "NEO4J_PASSWORD": true },
+  "neo4j": true,
+  "chroma_assets": 5
+}
+```
+
+Open **https://graph-eligibility-rag.onrender.com** → click **Run demo query**.
+
+In Render **Logs**, you should see:
+
+```
+[startup] NEO4J_URI set=True NEO4J_PASSWORD set=True
+```
+
+### Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| `env_detected` all `false` | Env vars missing on **Web Service** Environment tab → save → Manual Deploy |
+| `status: degraded`, Neo4j error | Check URI starts with `neo4j+s://`, password correct, Aura instance running |
+| Build timeout / OOM | Upgrade to Render **Starter** ($7/mo) |
+| First demo slow (~60s) | Normal — embedding model loading on free tier |
 
 ### Deployment notes
 

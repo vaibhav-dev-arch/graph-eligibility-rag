@@ -1,7 +1,7 @@
-# Render Blueprint — https://render.com/docs/blueprint-spec
+# Optional Blueprint — manual Web Service deploy is recommended (see README).
 services:
   - type: web
-    name: graph-eligibility-marketingtech
+    name: graph-eligibility-rag
     runtime: python
     plan: free
     buildCommand: bash scripts/render_build.sh
