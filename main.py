@@ -9,8 +9,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from config import get_settings
-from src.app_state import clear_services, initialize_services, services_ready, startup_error
-from src.app_state import get_embeddings, get_graph
+from src.app_state import (
+    clear_services,
+    ensure_embeddings,
+    get_embeddings,
+    get_graph,
+    graph_ready,
+    initialize_graph,
+    initialize_services,
+    services_ready,
+    startup_error,
+)
 from src.ingest import ingest_asset, seed_demo_data
 from src.integration import get_telemetry_events
 from src.models import Asset, NextBestContentRequest
@@ -29,6 +38,7 @@ def _verify_neo4j(graph) -> bool:
 
 
 def _require_services():
+    initialize_services()
     if not services_ready():
         detail = startup_error() or "Services not initialized"
         raise HTTPException(
@@ -42,12 +52,12 @@ async def lifespan(app: FastAPI):
     uri_set = bool(os.environ.get("NEO4J_URI", "").strip())
     pwd_set = bool(os.environ.get("NEO4J_PASSWORD", "").strip())
     print(f"[startup] NEO4J_URI set={uri_set} NEO4J_PASSWORD set={pwd_set}", flush=True)
-    initialize_services()
+    print("[startup] deferring embedding model load until first /demo request", flush=True)
     yield
     clear_services()
 
 
-app = FastAPI(title="Graph Eligibility RAG", lifespan=lifespan, version="0.1.1")
+app = FastAPI(title="Graph Eligibility RAG", lifespan=lifespan, version="0.1.2")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
@@ -117,20 +127,26 @@ def health():
     chroma_count = 0
     err = startup_error()
 
-    if neo4j_configured and not services_ready():
-        initialize_services()
+    if neo4j_configured and not graph_ready():
+        initialize_graph()
 
-    if services_ready():
+    if graph_ready():
         try:
-            graph = get_graph()
-            emb = get_embeddings()
-            neo4j_ok = _verify_neo4j(graph)
-            chroma_count = emb._collection.count()
+            neo4j_ok = _verify_neo4j(get_graph())
         except Exception as exc:
             err = str(exc)
 
+    if services_ready():
+        try:
+            emb = get_embeddings()
+            chroma_count = emb._collection.count()
+        except Exception as exc:
+            err = err or str(exc)
+
     if neo4j_ok and chroma_count > 0:
         status = "ok"
+    elif neo4j_ok and chroma_count == 0:
+        status = "warming"
     elif not neo4j_configured:
         status = "setup_required"
     else:
@@ -149,8 +165,10 @@ def health():
             "NEO4J_PASSWORD": env_password,
         },
         "setup_hint": (
-            None
-            if neo4j_configured
+            "Neo4j connected — click Run demo query (first run loads embedding model ~60s)."
+            if status == "warming"
+            else None
+            if neo4j_configured and status != "setup_required"
             else "Set NEO4J_URI and NEO4J_PASSWORD on the web service Environment tab, then Manual Deploy."
         ),
     }

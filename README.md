@@ -127,8 +127,9 @@ In Render **Logs**, you should see:
 |---------|-----|
 | `env_detected` all `false` | Env vars missing on **Web Service** Environment tab → save → Manual Deploy |
 | `status: degraded`, Neo4j error | Check URI starts with `neo4j+s://`, password correct, Aura instance running |
-| Build timeout / OOM | Upgrade to Render **Starter** ($7/mo) |
-| First demo slow (~60s) | Normal — embedding model loading on free tier |
+| Build timeout / OOM on deploy | **Clear build cache & redeploy** — build must use CPU-only torch (see `scripts/render_build.sh`). If still OOM on first `/demo`, upgrade to **Starter** ($7/mo). |
+| `No open ports detected` then OOM | Fixed in v0.1.2 — app binds port before loading PyTorch. Redeploy latest `main`. |
+| First demo slow (~60s) | Normal — embedding model loads on first `/demo` request (deferred for free tier). |
 
 ### Deployment notes
 
