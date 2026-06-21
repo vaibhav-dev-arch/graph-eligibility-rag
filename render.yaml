@@ -1,7 +1,7 @@
 # Render Blueprint — https://render.com/docs/blueprint-spec
 services:
   - type: web
-    name: graph-eligibility-rag
+    name: graph-eligibility-marketingtech
     runtime: python
     plan: free
     buildCommand: bash scripts/render_build.sh

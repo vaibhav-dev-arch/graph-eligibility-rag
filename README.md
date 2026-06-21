@@ -4,9 +4,11 @@
 
 ## Live demo
 
-**Live URL:** _Deploy pending — see [Deploy on Render (free)](#deploy-on-render-free) below._
+**Live URL:** https://graph-eligibility-marketingtech.onrender.com _(after deploy succeeds)_
 
-Open the link → click **Run demo query**, or use [/docs](https://graph-eligibility-rag.onrender.com/docs) once deployed.
+Open the link → click **Run demo query**, or use `/docs`.
+
+_Neo4j Aura env vars must be set in Render for `/demo` to work — see [Deploy on Render](#deploy-on-render-free)._
 
 ## Quick start
 
