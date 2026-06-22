@@ -2,7 +2,6 @@
 
 from config import get_settings
 from src.app_state import get_embeddings, get_graph
-from src.llm_enrichment import generate_why_recommendation
 from src.models import NextBestContentRequest
 from src.ranking import rank_candidates
 from src.retrieval import HybridRetriever
@@ -36,6 +35,8 @@ def get_next_best_content(request: NextBestContentRequest) -> dict:
         explain=request.explain,
     )
     if get_settings().llm_enabled and request.explain:
+        from src.llm_enrichment import generate_why_recommendation
+
         for r in results:
             r.explanation = [generate_why_recommendation(r)]
     return {

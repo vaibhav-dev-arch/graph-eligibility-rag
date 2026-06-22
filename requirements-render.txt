@@ -1,10 +1,9 @@
-# Render free tier — no torch/chromadb (512Mi OOM otherwise)
+# Render free tier — no torch/chromadb/openai (512Mi OOM + import crash otherwise)
 neo4j>=5.14.0
 fastapi>=0.104.0
-uvicorn[standard]>=0.24.0
+uvicorn>=0.24.0
 pydantic>=2.5.0
 pydantic-settings>=2.1.0
 httpx>=0.25.0
 python-dotenv>=1.0.0
 structlog>=23.2.0
-numpy>=1.24.0

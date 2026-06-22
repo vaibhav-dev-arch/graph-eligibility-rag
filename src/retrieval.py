@@ -1,9 +1,7 @@
 """Hybrid retrieval: top-K vector similarity + graph eligibility constraints."""
 import time
-from typing import Optional
+from typing import Any, Optional
 
-from config import get_settings
-from src.embeddings import EmbeddingService
 from src.graph import ContentGraph
 from src.models import EligibilityFilter
 
@@ -11,7 +9,7 @@ from src.models import EligibilityFilter
 class HybridRetriever:
     """Vector similarity + graph-based eligibility; explainable results."""
 
-    def __init__(self, embedding_service: EmbeddingService, graph: ContentGraph):
+    def __init__(self, embedding_service: Any, graph: ContentGraph):
         self._emb = embedding_service
         self._graph = graph
 

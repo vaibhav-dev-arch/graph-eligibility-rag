@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI):
     clear_services()
 
 
-app = FastAPI(title="Graph Eligibility RAG", lifespan=lifespan, version="0.2.0")
+app = FastAPI(title="Graph Eligibility RAG", lifespan=lifespan, version="0.2.1")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
